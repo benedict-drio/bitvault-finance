@@ -42,3 +42,32 @@
 (define-data-var total-supply uint u0)
 (define-data-var collateralization-ratio uint u150) ;; 150% minimum collateral
 (define-data-var liquidation-threshold uint u125) ;; 125% liquidation starts
+
+;; Governance parameters
+(define-data-var mint-fee-bps uint u50) ;; 0.5% minting fee
+(define-data-var redemption-fee-bps uint u50) ;; 0.5% redemption fee
+(define-data-var max-mint-limit uint u1000000) ;; Prevent excessive minting
+
+;; Oracles and price feeds
+(define-map btc-price-oracles principal bool)
+(define-map last-btc-price 
+  {
+    timestamp: uint,
+    price: uint
+  }
+  uint
+)
+
+;; Vault structure
+(define-map vaults 
+  {
+    owner: principal, 
+    id: uint
+  }
+  {
+    collateral-amount: uint,  ;; BTC amount as collateral
+    stablecoin-minted: uint,  ;; Minted stablecoin amount
+    created-at: uint          ;; Timestamp of vault creation
+  }
+)
+
