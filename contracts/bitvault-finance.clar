@@ -91,3 +91,40 @@
     (ok true)
   )
 )
+
+;; Enhanced Update BTC price
+(define-public (update-btc-price (price uint) (timestamp uint))
+  (begin
+    ;; Validate oracle
+    (asserts! (is-some (map-get? btc-price-oracles tx-sender)) ERR-NOT-AUTHORIZED)
+    
+    ;; Enhanced input validation
+    (asserts! (and 
+      (> price u0)  ;; Positive price
+      (<= price MAX-BTC-PRICE)  ;; Within reasonable bounds
+    ) ERR-INVALID-PARAMETERS)
+    
+    ;; Timestamp validation
+    (asserts! (<= timestamp MAX-TIMESTAMP) ERR-INVALID-PARAMETERS)
+    
+    ;; Update price
+    (map-set last-btc-price 
+      {
+        timestamp: timestamp, 
+        price: price
+      }
+      price
+    )
+    (ok true)
+  )
+)
+
+;; Get latest BTC price
+(define-read-only (get-latest-btc-price)
+  (map-get? last-btc-price 
+    {
+      timestamp: block-height,
+      price: u0
+    }
+  )
+)
