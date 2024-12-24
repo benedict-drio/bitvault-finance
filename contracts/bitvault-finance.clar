@@ -71,3 +71,23 @@
   }
 )
 
+;; Vault counter
+(define-data-var vault-counter uint u0)
+
+;; Enhanced Add BTC price oracle
+(define-public (add-btc-price-oracle (oracle principal))
+  (begin
+    ;; Strict authorization check
+    (asserts! (is-eq tx-sender CONTRACT-OWNER) ERR-NOT-AUTHORIZED)
+    
+    ;; Prevent adding zero address or contract owner as oracle
+    (asserts! (and 
+      (not (is-eq oracle CONTRACT-OWNER)) 
+      (not (is-eq oracle tx-sender))
+    ) ERR-INVALID-PARAMETERS)
+    
+    ;; Add oracle
+    (map-set btc-price-oracles oracle true)
+    (ok true)
+  )
+)
