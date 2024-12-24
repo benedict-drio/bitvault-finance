@@ -249,3 +249,74 @@
     (ok true)
   )
 )
+
+;; Enhanced Liquidation mechanism
+(define-public (liquidate-vault 
+  (vault-owner principal)
+  (vault-id uint)
+)
+  (let
+    (
+      ;; Validate vault-id before any other operations
+      (is-valid-vault-id 
+        (and 
+          (> vault-id u0)  ;; Vault ID must be positive
+          (<= vault-id (var-get vault-counter))  ;; Must not exceed current vault counter
+        )
+      )
+      
+      ;; Retrieve vault details
+      (vault 
+        (unwrap! 
+          (map-get? vaults {owner: vault-owner, id: vault-id}) 
+          ERR-INVALID-PARAMETERS
+        )
+      )
+      
+      ;; Get latest BTC price
+      (btc-price 
+        (unwrap! 
+          (get-latest-btc-price) 
+          ERR-ORACLE-PRICE-UNAVAILABLE
+        )
+      )
+      
+      ;; Current vault collateralization
+      (current-collateralization 
+        (/
+          (* 
+            (get collateral-amount vault) 
+            btc-price  ;; Direct use of price value
+          ) 
+          (get stablecoin-minted vault)
+        )
+      )
+    )
+    
+    ;; Vault ID validation check
+    (asserts! is-valid-vault-id ERR-INVALID-PARAMETERS)
+    
+    ;; Prevent self-liquidation
+    (asserts! (not (is-eq tx-sender vault-owner)) ERR-UNAUTHORIZED-VAULT-ACTION)
+    
+    ;; Check if vault is liquidatable
+    (asserts! 
+      (< current-collateralization (var-get liquidation-threshold)) 
+      ERR-LIQUIDATION-FAILED
+    )
+    
+    ;; Perform liquidation
+    ;; 1. Seize collateral
+    ;; 2. Burn minted stablecoins
+    
+    ;; Update total supply
+    (var-set total-supply 
+      (- (var-get total-supply) (get stablecoin-minted vault))
+    )
+    
+    ;; Remove vault
+    (map-delete vaults {owner: vault-owner, id: vault-id})
+    
+    (ok true)
+  )
+)
