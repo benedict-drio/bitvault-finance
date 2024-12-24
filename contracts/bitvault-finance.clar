@@ -77,7 +77,6 @@
 ;; Enhanced Add BTC price oracle
 (define-public (add-btc-price-oracle (oracle principal))
   (begin
-    ;; Strict authorization check
     (asserts! (is-eq tx-sender CONTRACT-OWNER) ERR-NOT-AUTHORIZED)
     
     ;; Prevent adding zero address or contract owner as oracle
@@ -95,16 +94,12 @@
 ;; Enhanced Update BTC price
 (define-public (update-btc-price (price uint) (timestamp uint))
   (begin
-    ;; Validate oracle
     (asserts! (is-some (map-get? btc-price-oracles tx-sender)) ERR-NOT-AUTHORIZED)
-    
-    ;; Enhanced input validation
     (asserts! (and 
       (> price u0)  ;; Positive price
       (<= price MAX-BTC-PRICE)  ;; Within reasonable bounds
     ) ERR-INVALID-PARAMETERS)
     
-    ;; Timestamp validation
     (asserts! (<= timestamp MAX-TIMESTAMP) ERR-INVALID-PARAMETERS)
     
     ;; Update price
@@ -141,9 +136,8 @@
         }
       )
     )
-    ;; Enhanced validation
     (asserts! (> collateral-amount u0) ERR-INVALID-COLLATERAL)
-    (asserts! (< vault-id (+ (var-get vault-counter) u1000)) ERR-INVALID-PARAMETERS) ;; Prevent excessive vault creation
+    (asserts! (< vault-id (+ (var-get vault-counter) u1000)) ERR-INVALID-PARAMETERS) ;; Prevent excessive 
     
     ;; Increment vault counter
     (var-set vault-counter vault-id)
@@ -281,7 +275,6 @@
         )
       )
       
-      ;; Current vault collateralization
       (current-collateralization 
         (/
           (* 
@@ -293,13 +286,8 @@
       )
     )
     
-    ;; Vault ID validation check
     (asserts! is-valid-vault-id ERR-INVALID-PARAMETERS)
-    
-    ;; Prevent self-liquidation
     (asserts! (not (is-eq tx-sender vault-owner)) ERR-UNAUTHORIZED-VAULT-ACTION)
-    
-    ;; Check if vault is liquidatable
     (asserts! 
       (< current-collateralization (var-get liquidation-threshold)) 
       ERR-LIQUIDATION-FAILED
@@ -346,10 +334,7 @@
       )
     )
     
-    ;; Vault ID validation check
     (asserts! is-valid-vault-id ERR-INVALID-PARAMETERS)
-    
-    ;; Validate sender
     (asserts! (is-eq tx-sender vault-owner) ERR-UNAUTHORIZED-VAULT-ACTION)
     
     ;; Validate redemption amount
@@ -359,7 +344,6 @@
       ERR-INSUFFICIENT-BALANCE
     )
     
-    ;; Update vault with redeemed amount
     (map-set vaults {owner: vault-owner, id: vault-id}
       {
         collateral-amount: (get collateral-amount vault),
@@ -375,4 +359,29 @@
     
     (ok true)
   )
+)
+
+;; Governance functions
+(define-public (update-collateralization-ratio (new-ratio uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT-OWNER) ERR-NOT-AUTHORIZED)
+    (asserts! 
+      (and 
+        (>= new-ratio u100)  ;; Minimum 100%
+        (<= new-ratio u300)  ;; Maximum 300%
+      ) 
+      ERR-INVALID-PARAMETERS
+    )
+    (var-set collateralization-ratio new-ratio)
+    (ok true)
+  )
+)
+
+;; Read-only functions for transparency
+(define-read-only (get-vault-details (vault-owner principal) (vault-id uint))
+  (map-get? vaults {owner: vault-owner, id: vault-id})
+)
+
+(define-read-only (get-total-supply)
+  (var-get total-supply)
 )
