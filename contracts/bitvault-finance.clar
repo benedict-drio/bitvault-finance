@@ -160,3 +160,92 @@
     (ok vault-id)
   )
 )
+
+;; Enhanced Mint stablecoin
+(define-public (mint-stablecoin 
+  (vault-owner principal)
+  (vault-id uint)
+  (mint-amount uint)
+)
+  (let
+    (
+      ;; Validate vault-id before any other operations
+      (is-valid-vault-id 
+        (and 
+          (> vault-id u0)  ;; Vault ID must be positive
+          (<= vault-id (var-get vault-counter))  ;; Must not exceed current vault counter
+        )
+      )
+      
+      ;; Retrieve vault details
+      (vault 
+        (unwrap! 
+          (map-get? vaults {owner: vault-owner, id: vault-id}) 
+          ERR-INVALID-PARAMETERS
+        )
+      )
+      
+      ;; Get latest BTC price
+      (btc-price 
+        (unwrap! 
+          (get-latest-btc-price) 
+          ERR-ORACLE-PRICE-UNAVAILABLE
+        )
+      )
+      
+      ;; Calculate maximum mintable amount based on collateral
+      (max-mintable 
+        (/
+          (* 
+            (get collateral-amount vault) 
+            btc-price  ;; Direct use of price value
+          ) 
+          (var-get collateralization-ratio)
+        )
+      )
+    )
+    
+    ;; Vault ID validation check
+    (asserts! is-valid-vault-id ERR-INVALID-PARAMETERS)
+    
+    ;; Enhanced authorization check
+    (asserts! (is-eq tx-sender vault-owner) ERR-UNAUTHORIZED-VAULT-ACTION)
+    
+    ;; Validate mint amount
+    (asserts! (> mint-amount u0) ERR-INVALID-PARAMETERS)
+    
+    ;; Validate minting conditions
+    (asserts! 
+      (>= 
+        max-mintable 
+        (+ (get stablecoin-minted vault) mint-amount)
+      ) 
+      ERR-UNDERCOLLATERALIZED
+    )
+    
+    ;; Check mint limit
+    (asserts! 
+      (<= 
+        (+ (get stablecoin-minted vault) mint-amount) 
+        (var-get max-mint-limit)
+      ) 
+      ERR-MINT-LIMIT-EXCEEDED
+    )
+    
+    ;; Update vault with minted amount
+    (map-set vaults {owner: vault-owner, id: vault-id}
+      {
+        collateral-amount: (get collateral-amount vault),
+        stablecoin-minted: (+ (get stablecoin-minted vault) mint-amount),
+        created-at: (get created-at vault)
+      }
+    )
+    
+    ;; Update total supply
+    (var-set total-supply 
+      (+ (var-get total-supply) mint-amount)
+    )
+    
+    (ok true)
+  )
+)
