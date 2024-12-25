@@ -95,4 +95,4 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 ## Support
 
-For support, please open an issue on GitHub or contact the team at support@bitvault.finance.
+For support, please open an issue on GitHub or contact the team at nicholasbenedict04@gmail.com
